@@ -1,6 +1,5 @@
+// File: src/app/api/offers/[sessionId]/respond/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/db";
-import { Recipient } from "@/models/Recipient";
 import {
   getSession,
   respondToOffer,
@@ -50,7 +49,7 @@ export async function POST(
     );
   }
 
-  const session = getSession(sessionId);
+  const session = await getSession(sessionId);
   if (!session) {
     return NextResponse.json(
       { status: "error", message: "Session matching token expired or not found." },
@@ -67,27 +66,7 @@ export async function POST(
       );
     }
 
-    if (body.decision === "accept") {
-      const db = await connectToDatabase();
-      if (db) {
-        const updateResult = await Recipient.updateOne(
-          { patientId: targetCandidate.patient_id, status: "waiting" },
-          { $set: { status: "matched" } }
-        );
-
-        if (updateResult.modifiedCount === 0) {
-          return NextResponse.json(
-            {
-              status: "error",
-              message: `Patient ${targetCandidate.patient_id} is no longer available (already matched or removed by another session).`,
-            },
-            { status: 409 }
-          );
-        }
-      }
-    }
-
-    const updatedSession = respondToOffer(
+    const updatedSession = await respondToOffer(
       sessionId,
       body.decision as OfferDecision,
       body.reason as DeclineReason | undefined

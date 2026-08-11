@@ -1,6 +1,4 @@
 // ============================================================================
-// Mirrors cpp-engine/include/bitmask_check.h EXACTLY.
-//
 // BIT LAYOUT (bits 0-31, low to high):
 //   bits 0-3   : ABO blood type   (one-hot: O=1, A=2, B=4, AB=8)
 //   bit  4     : Rh factor        (1 = positive, 0 = negative)

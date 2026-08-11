@@ -1,7 +1,7 @@
+// File: src/app/api/recipients/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import { Recipient } from "@/models/Recipient";
-import { SEED_RECIPIENTS } from "@/lib/seedRecipients";
 import { bloodTypeToMask, hlaArrayToMask } from "@/lib/bitmask";
 
 export async function GET(req: NextRequest) {
@@ -9,26 +9,22 @@ export async function GET(req: NextRequest) {
     const organ = req.nextUrl.searchParams.get("organ");
     const db = await connectToDatabase();
 
-    if (db) {
-      const filter = organ ? { organNeeded: { $regex: new RegExp(`^${organ}$`, "i") } } : {};
-      const recipients = await Recipient.find(filter).sort({ urgency: -1 }).lean();
-      return NextResponse.json({ status: "success", recipients, datasource: "mongodb" });
+    if (!db) {
+      return NextResponse.json(
+        { status: "error", message: "MongoDB connection unavailable. Seed the database first or check MONGODB_URI." },
+        { status: 503 }
+      );
     }
 
-    const recipients = organ
-      ? SEED_RECIPIENTS.filter((r) => r.organNeeded.toLowerCase() === organ.toLowerCase())
-      : SEED_RECIPIENTS;
-    return NextResponse.json({ status: "success", recipients, datasource: "fallback_seed" });
+    const filter = organ ? { organNeeded: { $regex: new RegExp(`^${organ}$`, "i") } } : {};
+    const recipients = await Recipient.find(filter).sort({ urgency: -1 }).lean();
+    return NextResponse.json({ status: "success", recipients, datasource: "mongodb" });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to fetch recipient records";
     return NextResponse.json({ status: "error", message }, { status: 500 });
   }
 }
 
-// FIX: explicit missing-value checks instead of truthiness -- urgency: 0 or
-// hospitalId: 0 are no longer wrongly rejected as "missing" (urgency's schema
-// minimum is 1 so it'd fail validation anyway, but it should fail with the
-// real schema error, not a misleading generic "missing field" message).
 function isMissing(value: unknown): boolean {
   return value === undefined || value === null || value === "" || (typeof value === "number" && Number.isNaN(value));
 }

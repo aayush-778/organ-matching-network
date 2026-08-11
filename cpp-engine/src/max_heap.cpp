@@ -1,3 +1,4 @@
+// File: cpp-engine/src/max_heap.cpp
 #include "max_heap.h"
 #include <algorithm>
 #include <utility>
@@ -5,7 +6,7 @@
 namespace organmatch {
     
     double MaxHeap::computeScore(double urgency, double waiting_years, double distance_km) {
-        return (urgency*10.0 + waiting_years*2.0 - distance_km*5.0);
+        return (urgency*10.0 + waiting_years*2.0 - distance_km*0.5);
     }
 
     static bool priorityComparison(const Candidate& a, const Candidate& b) {

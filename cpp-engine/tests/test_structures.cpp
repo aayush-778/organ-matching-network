@@ -1,3 +1,4 @@
+// File: cpp-engine/tests/test_structures.cpp
 // Lightweight assert-based unit tests -- no external framework dependency.
 // Run: g++ -std=c++17 -Iinclude tests/test_structures.cpp src/*.cpp -o tests/run_tests
 //      ./tests/run_tests

@@ -1,3 +1,4 @@
+// File: cpp-engine/src/main.cpp
 #include "bitmask_check.h"
 #include "max_heap.h"
 #include "graph.h"
@@ -15,19 +16,24 @@ using json = nlohmann::json;
 using namespace organmatch;
 
 namespace {
+
+void addBidirectionalEdge(Graph& g, const std::string& a, const std::string& b, double weight_minutes) {
+    g.addEdge(a, b, weight_minutes);
+    g.addEdge(b, a, weight_minutes);
+}
     
 Graph buildRegionalGraph() {
     Graph g;
-    g.addEdge("Hospital_12", "Transit_Hub_A", 12);
-    g.addEdge("Transit_Hub_A", "Hospital_45", 25);
-    g.addEdge("Hospital_12", "Transit_Hub_B", 8);
-    g.addEdge("Transit_Hub_B", "Hospital_45", 30);
-    g.addEdge("Hospital_12", "Hospital_45", 90); 
-    g.addEdge("Transit_Hub_A", "Transit_Hub_B", 15);
-    g.addEdge("Hospital_12", "Hospital_77", 55);
-    g.addEdge("Transit_Hub_A", "Hospital_77", 20);
-    g.addEdge("Hospital_45", "Hospital_99", 10);
-    g.addEdge("Transit_Hub_B", "Hospital_99", 18);
+    addBidirectionalEdge(g, "Hospital_12", "Transit_Hub_A", 12);
+    addBidirectionalEdge(g, "Transit_Hub_A", "Hospital_45", 25);
+    addBidirectionalEdge(g, "Hospital_12", "Transit_Hub_B", 8);
+    addBidirectionalEdge(g, "Transit_Hub_B", "Hospital_45", 30);
+    addBidirectionalEdge(g, "Hospital_12", "Hospital_45", 90); 
+    addBidirectionalEdge(g, "Transit_Hub_A", "Transit_Hub_B", 15);
+    addBidirectionalEdge(g, "Hospital_12", "Hospital_77", 55);
+    addBidirectionalEdge(g, "Transit_Hub_A", "Hospital_77", 20);
+    addBidirectionalEdge(g, "Hospital_45", "Hospital_99", 10);
+    addBidirectionalEdge(g, "Transit_Hub_B", "Hospital_99", 18);
     return g;
 }
 
@@ -56,6 +62,12 @@ json errorResponse(const std::string& message) {
     return json{{"status", "error"}, {"message", message}};
 }
 
+std::string ischemiaWindowStatus(double eta_minutes, double ischemia_limit_mins) {
+    if (ischemia_limit_mins <= 0) return "tight";
+    double usedFraction = eta_minutes / ischemia_limit_mins;
+    return usedFraction >= 0.7 ? "tight" : "safe";
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -72,7 +84,7 @@ int main(int argc, char** argv) {
     json input;
     try {
         input = json::parse(raw_data);
-    }catch (const json::parse_error& e) {
+    } catch (const json::parse_error& e) {
         std::cout << errorResponse(std::string("invalid JSON input: ") + e.what()).dump() << std::endl;
         return 1;
     }
@@ -82,21 +94,25 @@ int main(int argc, char** argv) {
         double ischemia_limit = input.at("ischemia_limit_mins").get<double>();
         int donor_hospital_id = input.at("donor_hospital_id").get<int>();
         uint32_t donor_blood_mask = input.at("donor_blood_mask").get<uint32_t>();
+        
+        int max_allowed_hla_mismatches = input.value("max_allowed_hla_mismatches", 4);
         auto recipients = input.at("recipients");
 
         Graph graph = buildRegionalGraph();
         std::string donor_vertex = hospitalVertexId(donor_hospital_id);
+        
+        auto all_transit_paths = graph.allShortestPaths(donor_vertex);
 
         MaxHeap heap;
         json screened_out = json::array(); 
         std::unordered_map<std::string, PathResult> paths_by_patient;
+        std::unordered_map<std::string, bool> has_real_distance_by_patient;
 
         for(const auto& r : recipients) {
             std::string patient_id = r.at("id").get<std::string>();
             uint32_t recipient_mask = r.at("blood_mask").get<uint32_t>();
 
-            // --- TIER 1: Biochemical Screening ---
-            compatibilityResult compat = BitmaskChecker::check(donor_blood_mask, recipient_mask);
+            compatibilityResult compat = BitmaskChecker::check(donor_blood_mask, recipient_mask, max_allowed_hla_mismatches);
             if (!compat.overall_compatible) {
                 screened_out.push_back({{"patient_id", patient_id},
                                          {"reason", "biochemical_incompatible"},
@@ -104,16 +120,16 @@ int main(int argc, char** argv) {
                 continue;
             }
 
-            // --- TIER 2: Logistics & Viability ---
             int recipient_hospital_id = r.at("hospital_id").get<int>();
             std::string recipient_vertex = hospitalVertexId(recipient_hospital_id);
-            PathResult path = graph.shortestPath(donor_vertex, recipient_vertex);
-
-            if (!path.reachable) {
+            
+            if (all_transit_paths.find(recipient_vertex) == all_transit_paths.end()) {
                 screened_out.push_back({{"patient_id", patient_id},
                                          {"reason", "no_transit_path_found"}});
                 continue;
             }
+            PathResult path = all_transit_paths[recipient_vertex];
+
             if (path.total_eta_minutes > ischemia_limit) {
                 screened_out.push_back({{"patient_id", patient_id},
                                          {"reason", "exceeds_ischemia_window"},
@@ -122,11 +138,12 @@ int main(int argc, char** argv) {
                 continue;
             }
 
-            // --- TIER 3: Enqueue Target Candidate ---
             Candidate c;
             c.patient_id = patient_id;
             c.urgency = r.at("urgency").get<double>();
             c.waiting_years = r.at("waiting_years").get<double>();
+            
+            has_real_distance_by_patient[patient_id] = r.contains("distance_km");
             c.distance_km = r.value("distance_km", path.total_eta_minutes);
             
             paths_by_patient[patient_id] = std::move(path);
@@ -139,6 +156,7 @@ int main(int argc, char** argv) {
         while (!heap.empty()) {
             Candidate c = heap.extractMax();
             const PathResult& path = paths_by_patient.at(c.patient_id);
+            bool has_real_distance = has_real_distance_by_patient.at(c.patient_id);
             
             ranked_matches.push_back({
                 {"patient_id", std::move(c.patient_id)},
@@ -147,8 +165,9 @@ int main(int argc, char** argv) {
                 {"logistics", {
                     {"path_sequence", path.path_sequence},
                     {"total_eta_minutes", path.total_eta_minutes},
-                    {"ischemia_window_status", "safe"}
-                }}
+                    {"ischemia_window_status", ischemiaWindowStatus(path.total_eta_minutes, ischemia_limit)}
+                }},
+                {"distance_km_source", has_real_distance ? "reported" : "eta_proxy"}
             });
         }
 
@@ -162,10 +181,10 @@ int main(int argc, char** argv) {
         std::cout << output.dump() << std::endl;
         return 0;
 
-    }catch (const json::out_of_range& e) {
+    } catch (const json::out_of_range& e) {
         std::cout << errorResponse(std::string("missing required field: ") + e.what()).dump() << std::endl;
         return 1;
-    }catch (const std::exception& e) {
+    } catch (const std::exception& e) {
         std::cout << errorResponse(std::string("engine error: ") + e.what()).dump() << std::endl;
         return 1;
     }

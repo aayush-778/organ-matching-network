@@ -1,3 +1,4 @@
+// File: cpp-engine/include/graph.h
 #pragma once
 #include <vector>
 #include <unordered_map>
@@ -32,17 +33,17 @@ namespace organmatch {
     class Graph {
         public:
             void addVertex(const std::string& id);
-
             void addEdge(const std::string& from, const std::string& to, double weight_minutes);
 
             // Runs Dijkstra's algorithm from `source` to `target`.
-            // Returns reachable=false if no path exists.
             PathResult shortestPath(const std::string& source, const std::string& target) const;
+
+            // Runs Dijkstra once and returns paths to ALL reachable nodes.
+            std::unordered_map<std::string, PathResult> allShortestPaths(const std::string& source) const;
 
             bool hasVertex(const std::string& id) const;
 
         private:
-            // adj[u] = list of {u, weight}
             std::unordered_map<std::string, std::vector<std::pair<std::string, double>>> adj;
     };
 

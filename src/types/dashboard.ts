@@ -49,7 +49,7 @@ export interface MatchResponse {
   remaining_in_queue: number;
   matches_found: number;
   screened_out: number;
-  datasource: "mongodb" | "fallback_seed";
+  datasource: "mongodb";
   history?: OfferHistoryItem[];
   message?: string;
   hint?: string;
@@ -98,7 +98,7 @@ export interface Recipient {
 export interface RecipientsResponse {
   status: "success" | "error";
   recipients: Recipient[];
-  datasource?: "mongodb" | "fallback_seed";
+  datasource?: "mongodb";
   message?: string;
 }
 

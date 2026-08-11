@@ -1,3 +1,4 @@
+// File: cpp-engine/src/graph.cpp
 #include "graph.h"
 #include <queue>
 #include <algorithm>
@@ -16,11 +17,10 @@ namespace organmatch {
 
         for (auto& edge : adj[from]) {
             if (edge.first == to) {
-                edge.second = weight_minutes; // Update weight
+                edge.second = weight_minutes; 
                 return;
             }
         }
-
         adj[from].push_back({to, weight_minutes});
     }
 
@@ -29,13 +29,17 @@ namespace organmatch {
     }
 
     PathResult Graph::shortestPath(const std::string& source, const std::string& target) const {
-        PathResult result{};
-        result.reachable = false;
-        result.total_eta_minutes = std::numeric_limits<double>::infinity();
-
-        if (!hasVertex(source) || !hasVertex(target)) {
-            return result; // -> unreachable
+        auto all_paths = allShortestPaths(source);
+        if (all_paths.find(target) != all_paths.end()) {
+            return all_paths[target];
         }
+        
+        return PathResult{false, std::numeric_limits<double>::infinity(), {}};
+    }
+
+    std::unordered_map<std::string, PathResult> Graph::allShortestPaths(const std::string& source) const {
+        std::unordered_map<std::string, PathResult> results;
+        if (!hasVertex(source)) return results;
 
         std::unordered_map<std::string, double> dist;
         std::unordered_map<std::string, std::string> prev;
@@ -66,34 +70,37 @@ namespace organmatch {
                 if(new_dist < dist[v]) {
                     dist[v] = new_dist;
                     prev[v] = u;
-                    pq.push({weight, v});
+                    pq.push({new_dist, v}); 
                 }
             }
         }
 
-        if(dist[target] == std::numeric_limits<double>::infinity()) {
-            return result;
+        for(const auto& kv: adj) {
+            std::string target = kv.first;
+            if (dist[target] == std::numeric_limits<double>::infinity()) continue;
+
+            PathResult result;
+            result.reachable = true;
+            result.total_eta_minutes = dist[target];
+
+            std::vector<std::string> path;
+            std::string curr = target;
+            path.push_back(target);
+
+            while(curr != source) {
+                auto it = prev.find(curr);
+                if(it == prev.end()) break;
+                curr = it->second;
+                path.push_back(curr);
+            }
+
+            std::reverse(path.begin(), path.end());
+            result.path_sequence = path; 
+            
+            results[target] = result;
         }
 
-        result.reachable = true;
-        result.total_eta_minutes = dist[target];
-
-        // Reconstruct the path
-        std::vector<std::string> path;
-        std::string curr = target;
-        path.push_back(target);
-
-        while(curr != source) {
-            auto it = prev.find(curr);
-            if(it == prev.end()) break;
-            curr = it->second;
-            path.push_back(curr);
-        }
-
-        std::reverse(path.begin(), path.end());
-        result.path_sequence = path;\
-
-        return result;
+        return results;
     }
 
 } // namespace organmatch

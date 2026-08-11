@@ -1,9 +1,9 @@
+// File: src/app/api/match/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { spawn } from "child_process";
 import path from "path";
 import { connectToDatabase } from "@/lib/db";
 import { Recipient, type RecipientDoc } from "@/models/Recipient";
-import { SEED_RECIPIENTS } from "@/lib/seedRecipients";
 import { createSession, currentOffer, decisionWindowMinutes } from "@/lib/offerSessions";
 import { bloodTypeToMask, hlaArrayToMask } from "@/lib/bitmask";
 
@@ -15,7 +15,6 @@ function resolveEnginePath(): string {
   return path.join(process.cwd(), "cpp-engine", binaryName);
 }
 
-// Matches main.cpp exactly: combined mask per recipient.
 interface EngineRecipient {
   id: string;
   urgency: number;
@@ -33,8 +32,6 @@ interface IntakePayload {
   max_allowed_hla_mismatches?: number;
 }
 
-// Matches main.cpp's actual JSON reads: organ, ischemia_limit_mins,
-// donor_hospital_id, donor_blood_mask (combined), max_allowed_hla_mismatches,
 interface EnginePayload {
   organ: string;
   ischemia_limit_mins: number;
@@ -44,9 +41,18 @@ interface EnginePayload {
   recipients: EngineRecipient[];
 }
 
-function runEngine(payload: EnginePayload): Promise<{ stdout: string; stderr: string; code: number | null; timedOut: boolean }> {
+interface EngineRunResult {
+  stdout: string;
+  stderr: string;
+  code: number | null;
+  timedOut: boolean;
+  durationMs: number;
+}
+
+function runEngine(payload: EnginePayload): Promise<EngineRunResult> {
   return new Promise((resolve, reject) => {
     const enginePath = resolveEnginePath();
+    const startedAt = Date.now();
     const child = spawn(enginePath, ["--mode=pipeline"]);
 
     let stdout = "";
@@ -75,7 +81,7 @@ function runEngine(payload: EnginePayload): Promise<{ stdout: string; stderr: st
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      resolve({ stdout, stderr, code, timedOut });
+      resolve({ stdout, stderr, code, timedOut, durationMs: Date.now() - startedAt });
     });
 
     try {
@@ -131,33 +137,28 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    let targetRecipients: EngineRecipient[] = [];
     const db = await connectToDatabase();
-
-    if (db) {
-      const dbData = await Recipient.find({
-        organNeeded: { $regex: new RegExp(`^${organ}$`, "i") },
-        status: "waiting",
-      }).lean<RecipientDoc[]>();
-
-      targetRecipients = dbData.map((r) => ({
-        id: r.patientId,
-        urgency: Number(r.urgency),
-        waiting_years: Number(r.waitingYears),
-        blood_mask: (r.bloodMask ?? 0) | (r.hlaMask ?? 0),
-        hospital_id: Number(r.hospitalId),
-      }));
-    } else {
-      targetRecipients = SEED_RECIPIENTS
-        .filter((r) => r.organNeeded.toLowerCase() === organ.toLowerCase() && r.status === "waiting")
-        .map((r) => ({
-          id: r.patientId,
-          urgency: Number(r.urgency),
-          waiting_years: Number(r.waitingYears),
-          blood_mask: (r.bloodMask ?? 0) | (r.hlaMask ?? 0),
-          hospital_id: Number(r.hospitalId),
-        }));
+    if (!db) {
+      return NextResponse.json(
+        { status: "error", message: "MongoDB connection unavailable. Seed the database first or check MONGODB_URI." },
+        { status: 503 }
+      );
     }
+
+    const dbData = await Recipient.find({
+      organNeeded: { $regex: new RegExp(`^${organ}$`, "i") },
+      status: "waiting",
+    }).lean<RecipientDoc[]>();
+
+    console.log(`[match] organ=${organ} recipientCount=${dbData.length}`);
+
+    const targetRecipients: EngineRecipient[] = dbData.map((r) => ({
+      id: r.patientId,
+      urgency: Number(r.urgency),
+      waiting_years: Number(r.waitingYears),
+      blood_mask: (r.bloodMask ?? 0) | (r.hlaMask ?? 0),
+      hospital_id: Number(r.hospitalId),
+    }));
 
     if (targetRecipients.length === 0) {
       return NextResponse.json(
@@ -175,7 +176,7 @@ export async function POST(req: NextRequest) {
       recipients: targetRecipients,
     };
 
-    const { stdout, stderr, code, timedOut } = await runEngine(enginePayload);
+    const { stdout, stderr, code, timedOut, durationMs } = await runEngine(enginePayload);
 
     if (timedOut) {
       return NextResponse.json({ status: "error", message: `Engine timed out after ${ENGINE_TIMEOUT_MS}ms`, stderr }, { status: 504 });
@@ -214,11 +215,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(result, { status: 500 });
     }
 
-    const session = createSession(
+    const session = await createSession(
       result.organ || organ,
       enginePayload.ischemia_limit_mins,
       enginePayload.donor_hospital_id,
-      result.ranked_match_run ?? []
+      result.ranked_match_run ?? [],
+      durationMs,
+      result.matches_found,
+      Array.isArray(result.screened_out) ? result.screened_out.length : 0,
+      "mongodb"
     );
 
     return NextResponse.json({
@@ -229,9 +234,9 @@ export async function POST(req: NextRequest) {
       current_offer_expires_at: session.currentOfferExpiresAt,
       current_offer: currentOffer(session) ?? null,
       remaining_in_queue: session.queue.length,
-      matches_found: result.matches_found,
-      screened_out: Array.isArray(result.screened_out) ? result.screened_out.length : 0,
-      datasource: db ? "mongodb" : "fallback_seed",
+      matches_found: session.matches_found,
+      screened_out: session.screened_out,
+      datasource: session.datasource,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Engine execution error";

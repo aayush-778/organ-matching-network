@@ -1,3 +1,4 @@
+// File: src/app/api/offers/[sessionId]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getSession, currentOffer, decisionWindowMinutes } from "@/lib/offerSessions";
 
@@ -7,7 +8,7 @@ export async function GET(
 ) {
   const { sessionId } = await params;
 
-  const session = getSession(sessionId);
+  const session = await getSession(sessionId);
   if (!session) {
     return NextResponse.json({ status: "error", message: "Session not found or expired." }, { status: 404 });
   }
@@ -22,5 +23,8 @@ export async function GET(
     remaining_in_queue: session.queue.length,
     matched_patient_id: session.matched_patient_id ?? null,
     history: session.history,
+    matches_found: session.matches_found,
+    screened_out: session.screened_out,
+    datasource: session.datasource,
   });
 }

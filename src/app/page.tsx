@@ -1,5 +1,6 @@
 "use client";
 
+// File: src/app/page.tsx
 import { useEffect, useState, useCallback } from "react";
 import IntakeForm from "@/components/command/IntakeForm";
 import ActiveOfferCard from "@/components/command/ActiveOfferCard";
@@ -16,14 +17,26 @@ import type {
 import { Activity } from "lucide-react";
 
 const POLL_INTERVAL = 5000;
+const ACTIVE_SESSION_STORAGE_KEY = "organmatch.activeSessionId";
 
 export default function CommandCenterPage() {
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return window.localStorage.getItem(ACTIVE_SESSION_STORAGE_KEY);
+  });
   const [matchData, setMatchData] = useState<MatchResponse | null>(null);
   const [submittingIntake, setSubmittingIntake] = useState(false);
   const [busyAction, setBusyAction] = useState(false);
   const [declineModalOpen, setDeclineModalOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (activeSessionId) {
+      window.localStorage.setItem(ACTIVE_SESSION_STORAGE_KEY, activeSessionId);
+    } else {
+      window.localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
+    }
+  }, [activeSessionId]);
 
   const pollSession = useCallback(async (sessionId: string) => {
     try {
@@ -37,7 +50,7 @@ export default function CommandCenterPage() {
                 current_offer: res.current_offer ?? null,
                 current_offer_expires_at: res.current_offer_expires_at ?? null,
                 remaining_in_queue: res.remaining_in_queue ?? prev.remaining_in_queue,
-                  history: res.history ?? prev.history,
+                history: res.history ?? prev.history,
               }
             : (res as MatchResponse)
         );
@@ -53,6 +66,9 @@ export default function CommandCenterPage() {
               }
             : null
         );
+      } else if (res.message?.toLowerCase().includes("expired") || res.message?.toLowerCase().includes("not found")) {
+        setActiveSessionId(null);
+        setMatchData(null);
       }
     } catch (err) {
       console.error("Polling error:", err);
@@ -77,6 +93,11 @@ export default function CommandCenterPage() {
   }, [activeSessionId, pollSession]);
 
   async function handleDonorSubmit(values: IntakeFormValues) {
+    if (matchData?.session_status === "active") {
+      setErrorMessage("Finish the current active session before starting another intake.");
+      return;
+    }
+
     setSubmittingIntake(true);
     setErrorMessage(null);
     try {
@@ -86,11 +107,15 @@ export default function CommandCenterPage() {
         setMatchData(res);
       } else {
         setErrorMessage(res.message || "No eligible matches found in queue.");
+        setMatchData(null);
+        setActiveSessionId(null);
       }
     } catch (err: unknown) {
       setErrorMessage(
         err instanceof Error ? err.message : "Failed to run donor match pipeline."
       );
+      setMatchData(null);
+      setActiveSessionId(null);
     } finally {
       setSubmittingIntake(false);
     }
@@ -135,7 +160,9 @@ export default function CommandCenterPage() {
     try {
       const res = await respondToOffer(activeSessionId, "decline", reason);
       setDeclineModalOpen(false);
+
       if (res.status === "success" && res.current_offer) {
+        // Still active: next candidate is now the offer.
         setMatchData((prev) =>
           prev
             ? {
@@ -148,12 +175,12 @@ export default function CommandCenterPage() {
               }
             : null
         );
-      } else {
+      } else if (res.status === "success") {
         setMatchData((prev) =>
           prev
             ? {
                 ...prev,
-                session_status: "exhausted",
+                session_status: (res.session_status as "active" | "accepted" | "exhausted") ?? "exhausted",
                 current_offer: null,
                 current_offer_expires_at: null,
                 remaining_in_queue: 0,
@@ -161,6 +188,9 @@ export default function CommandCenterPage() {
               }
             : null
         );
+      } else {
+        setErrorMessage(res.message || "Failed to decline offer.");
+        await pollSession(activeSessionId);
       }
     } catch (err: unknown) {
       setErrorMessage(
@@ -193,6 +223,7 @@ export default function CommandCenterPage() {
               onClick={() => {
                 setActiveSessionId(null);
                 setMatchData(null);
+                window.localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
               }}
             >
               Clear Session
@@ -209,7 +240,10 @@ export default function CommandCenterPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         <div className="lg:col-span-5 space-y-6">
-          <IntakeForm onSubmit={handleDonorSubmit} submitting={submittingIntake} />
+          <IntakeForm
+            onSubmit={handleDonorSubmit}
+            submitting={submittingIntake || matchData?.session_status === "active"}
+          />
 
           {matchData && (
             <div className="bg-white border border-line rounded-card shadow-card p-5 space-y-3">

@@ -1,6 +1,5 @@
+// File: src/lib/db.ts
 import mongoose from "mongoose";
-
-const MONGODB_URI = process.env.MONGODB_URI;
 
 type MongooseCache = {
   conn: typeof mongoose | null;
@@ -20,6 +19,7 @@ global._mongooseCache = cache;
  * it returns null, allowing the application to gracefully fall back to local seed arrays.
  */
 export async function connectToDatabase(): Promise<typeof mongoose | null> {
+  const MONGODB_URI = process.env.MONGODB_URI;
   if (!MONGODB_URI) {
     return null;
   }

@@ -1,3 +1,4 @@
+// File: src/lib/seedRecipients.ts
 // bloodMask/hlaMask values below are computed against bitmask_check.h's real
 // layout (bits 0-3 ABO, bit 4 Rh, bits 5-20 HLA -- HLA_SHIFT = 5).
 

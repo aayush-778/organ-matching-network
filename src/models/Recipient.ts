@@ -1,4 +1,4 @@
-// src/models/Recipient.ts
+// File: src/models/Recipient.ts
 
 import mongoose, { Schema, Model } from "mongoose";
 
