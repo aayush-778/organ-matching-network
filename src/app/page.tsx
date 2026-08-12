@@ -1,6 +1,5 @@
 "use client";
 
-// File: src/app/page.tsx
 import { useEffect, useState, useCallback } from "react";
 import IntakeForm from "@/components/command/IntakeForm";
 import ActiveOfferCard from "@/components/command/ActiveOfferCard";
@@ -162,7 +161,6 @@ export default function CommandCenterPage() {
       setDeclineModalOpen(false);
 
       if (res.status === "success" && res.current_offer) {
-        // Still active: next candidate is now the offer.
         setMatchData((prev) =>
           prev
             ? {
@@ -202,19 +200,19 @@ export default function CommandCenterPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 font-sans">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-ink">
+          <h1 className="text-3xl font-bold tracking-tight text-ink font-heading">
             Allocation Command
           </h1>
-          <p className="text-sm text-muted">
+          <p className="text-sm text-muted font-sans mt-0.5">
             Manage live organ donor matches and candidate decision queues.
           </p>
         </div>
         {activeSessionId && (
           <div className="flex items-center gap-2">
-            <span className="text-xs font-mono text-muted">
+            <span className="text-xs font-mono text-muted bg-surface border border-line px-2.5 py-1 rounded-md">
               Session: {activeSessionId.slice(0, 8)}...
             </span>
             <Button
@@ -233,7 +231,7 @@ export default function CommandCenterPage() {
       </div>
 
       {errorMessage && (
-        <div className="bg-urgent-light border border-urgent/20 text-urgent p-4 rounded-card text-sm">
+        <div className="bg-urgent-light border border-urgent/20 text-urgent p-4 rounded-xl shadow-sm text-sm font-medium">
           {errorMessage}
         </div>
       )}
@@ -246,37 +244,62 @@ export default function CommandCenterPage() {
           />
 
           {matchData && (
-            <div className="bg-white border border-line rounded-card shadow-card p-5 space-y-3">
-              <h3 className="font-semibold text-sm text-ink">Match Overview</h3>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="bg-surface p-2.5 rounded-card border border-line/50">
-                  <span className="text-muted block text-[11px] mb-1">Status</span>
-                  <Badge
-                    tone={
-                      matchData.session_status === "accepted"
-                        ? "safe"
-                        : matchData.session_status === "active"
-                        ? "primary"
-                        : "neutral"
-                    }
-                  >
-                    {matchData.session_status}
-                  </Badge>
+            <div className="bg-white border border-line rounded-card shadow-card p-6 space-y-4">
+              <h3 className="font-semibold text-base text-ink font-heading tracking-tight">
+                Match Overview
+              </h3>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                
+                <div className="bg-surface p-3 rounded-xl border border-line/60 flex flex-col justify-center">
+                  <span className="text-muted font-medium text-[10px] uppercase tracking-wider mb-1.5 font-mono">
+                    Status
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {matchData.session_status === "active" && (
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                      </span>
+                    )}
+                    <Badge
+                      tone={
+                        matchData.session_status === "accepted" ? "safe"
+                          : matchData.session_status === "active" ? "primary"
+                          : "neutral"
+                      }
+                    >
+                      {matchData.session_status}
+                    </Badge>
+                  </div>
                 </div>
-                <div className="bg-surface p-2.5 rounded-card border border-line/50 font-mono">
-                  <span className="text-muted block font-sans text-[11px] mb-0.5">Matches Found</span>
-                  <span className="text-sm font-semibold text-ink">{matchData.matches_found ?? 0}</span>
-                </div>
-                <div className="bg-surface p-2.5 rounded-card border border-line/50 font-mono">
-                  <span className="text-muted block font-sans text-[11px] mb-0.5">Screened Out</span>
-                  <span className="text-sm font-semibold text-ink">
-                        {matchData.screened_out ?? 0}
+
+                <div className="bg-surface p-3 rounded-xl border border-line/60">
+                  <span className="text-muted font-medium text-[10px] uppercase tracking-wider mb-1 block font-mono">
+                    Matches Found
+                  </span>
+                  <span className="text-xl font-mono font-bold text-ink">
+                    {matchData.matches_found ?? 0}
                   </span>
                 </div>
-                <div className="bg-surface p-2.5 rounded-card border border-line/50 font-mono">
-                  <span className="text-muted block font-sans text-[11px] mb-0.5">Source</span>
-                  <span className="text-xs font-medium uppercase text-ink">{matchData.datasource}</span>
+                
+                <div className="bg-surface p-3 rounded-xl border border-line/60">
+                  <span className="text-muted font-medium text-[10px] uppercase tracking-wider mb-1 block font-mono">
+                    Screened Out
+                  </span>
+                  <span className="text-xl font-mono font-bold text-ink">
+                    {matchData.screened_out ?? 0}
+                  </span>
                 </div>
+                
+                <div className="bg-surface p-3 rounded-xl border border-line/60 flex flex-col justify-center">
+                  <span className="text-muted font-medium text-[10px] uppercase tracking-wider mb-1 block font-mono">
+                    Source
+                  </span>
+                  <span className="text-xs font-mono font-semibold uppercase text-ink">
+                    {matchData.datasource}
+                  </span>
+                </div>
+
               </div>
             </div>
           )}
@@ -294,28 +317,34 @@ export default function CommandCenterPage() {
               busy={busyAction}
             />
           ) : matchData?.session_status === "accepted" ? (
-            <div className="bg-safe-light border border-safe/20 rounded-card p-6 text-center space-y-2 shadow-card">
-              <h3 className="font-semibold text-safe text-lg">Match Confirmed & Accepted</h3>
-              <p className="text-sm text-muted">
+            <div className="bg-safe-light border border-safe/20 rounded-card p-8 text-center space-y-2 shadow-card">
+              <h3 className="font-semibold text-safe text-xl font-heading">
+                Match Confirmed & Accepted
+              </h3>
+              <p className="text-sm text-muted font-sans">
                 Logistics protocol initiated. Recipient facility notified.
               </p>
             </div>
           ) : matchData?.session_status === "exhausted" ? (
-            <div className="bg-surface border border-line rounded-card p-6 text-center space-y-2 shadow-card">
-              <h3 className="font-semibold text-ink text-lg">Queue Exhausted</h3>
-              <p className="text-sm text-muted">
+            <div className="bg-surface border border-line rounded-card p-8 text-center space-y-2 shadow-card">
+              <h3 className="font-semibold text-ink text-xl font-heading">
+                Queue Exhausted
+              </h3>
+              <p className="text-sm text-muted font-sans">
                 All candidates were evaluated or declined. Start a new intake or expand search constraints.
               </p>
             </div>
           ) : (
-            <div className="bg-white border border-line rounded-card shadow-card p-8 flex flex-col items-center justify-center text-center space-y-3 min-h-[220px]">
-              <div className="w-10 h-10 rounded-full bg-primary-light text-primary flex items-center justify-center">
-                <Activity size={20} />
+            <div className="bg-white border border-dashed border-line rounded-card shadow-card p-10 flex flex-col items-center justify-center text-center space-y-4 min-h-[260px] transition-all hover:bg-surface/50">
+              <div className="w-12 h-12 rounded-full bg-primary-light text-primary flex items-center justify-center shadow-inner">
+                <Activity size={24} strokeWidth={1.75} />
               </div>
-              <div className="max-w-xs space-y-1">
-                <h3 className="text-sm font-semibold text-ink">No Active Match Session</h3>
-                <p className="text-xs text-muted leading-relaxed">
-                  Submit a donor notification from the form to trigger candidate evaluation across the network.
+              <div className="max-w-sm space-y-1.5">
+                <h3 className="text-lg font-semibold text-ink tracking-tight font-heading">
+                  No Active Match Session
+                </h3>
+                <p className="text-sm text-muted leading-relaxed font-sans">
+                  Submit a donor notification from the intake form to trigger real-time candidate evaluation across the network.
                 </p>
               </div>
             </div>

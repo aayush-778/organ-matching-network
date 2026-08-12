@@ -1,8 +1,10 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: var(--font-poppins), system-ui, sans-serif;
-  --font-heading: var(--font-poppins), system-ui, sans-serif;
+  /* Font Family Token Mapping */
+  --font-sans: var(--font-plus-jakarta), system-ui, sans-serif;
+  --font-heading: var(--font-space-grotesk), system-ui, sans-serif;
+  --font-mono: var(--font-mono), monospace;
 
   /* Color Palette Tokens */
   --color-surface: #F4F6F6;
@@ -30,7 +32,7 @@
 html, body {
   background: #FAFAFA;
   color: var(--color-ink);
-  font-family: var(--font-poppins), system-ui, sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
 

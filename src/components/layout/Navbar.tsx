@@ -15,9 +15,15 @@ export default function Navbar() {
 
   return (
     <>
-      <header className="hidden md:flex fixed top-0 inset-x-0 h-14 z-40 items-center justify-between px-6 bg-white/90 backdrop-blur border-b border-line">
-        <Link href="/" className="flex items-center gap-2 font-heading font-semibold text-ink">
-          OrganMatch Network
+      {/* Desktop Navigation */}
+      <header className="hidden md:flex fixed top-0 inset-x-0 h-16 z-40 items-center justify-between px-6 bg-white/95 backdrop-blur-md border-b border-line transition-all">
+        <Link href="/" className="flex items-center gap-2.5 group">
+          <div className="bg-primary-light p-1.5 rounded-lg text-primary transition-colors">
+            <Activity size={18} strokeWidth={2.5} />
+          </div>
+          <span className="font-heading font-bold text-ink text-lg tracking-tight">
+            Organ-Match Network
+          </span>
         </Link>
 
         <nav className="flex items-center gap-1">
@@ -27,8 +33,10 @@ export default function Navbar() {
               <Link
                 key={href}
                 href={href}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-pill text-sm font-medium transition-colors ${
-                  active ? "bg-primary-light text-primary-dark" : "text-muted hover:text-ink hover:bg-surface"
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-pill text-sm font-semibold transition-colors ${
+                  active 
+                    ? "bg-primary-light text-primary-dark" 
+                    : "text-muted hover:text-ink hover:bg-surface"
                 }`}
               >
                 <Icon size={16} strokeWidth={2} />
@@ -38,34 +46,46 @@ export default function Navbar() {
           })}
         </nav>
 
-        <div className="flex items-center gap-1.5 text-xs font-mono text-safe">
-          <Activity size={14} className="animate-pulse" />
-          System live
+        <div className="flex items-center gap-2 text-xs font-mono text-safe font-medium">
+          <span className="h-2 w-2 rounded-full bg-safe"></span>
+          System Live
         </div>
       </header>
 
-      <header className="md:hidden fixed top-0 inset-x-0 h-14 z-40 safe-top flex items-center justify-between px-4 bg-white/90 backdrop-blur border-b border-line">
-        <span className="flex items-center gap-2 font-heading font-semibold text-ink text-sm">
-          <span className="w-2 h-2 rounded-full bg-primary" aria-hidden />
-          OrganMatch
+      {/* Mobile Top Header */}
+      <header className="md:hidden fixed top-0 inset-x-0 h-14 z-40 safe-top flex items-center justify-between px-4 bg-white/95 backdrop-blur-md border-b border-line">
+        <span className="flex items-center gap-2">
+          <div className="bg-primary-light p-1 rounded-md text-primary">
+            <Activity size={16} strokeWidth={2.5} />
+          </div>
+          <span className="font-heading font-bold text-ink text-base tracking-tight">
+            Organ-Match
+          </span>
         </span>
-        <span className="flex items-center gap-1 text-[11px] font-mono text-safe">
-          <Activity size={12} className="animate-pulse" />
+        <div className="flex items-center gap-1.5 text-[11px] font-mono font-medium text-safe">
+          <span className="h-1.5 w-1.5 rounded-full bg-safe"></span>
           Live
-        </span>
+        </div>
       </header>
 
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 safe-bottom bg-white border-t border-line flex">
+      {/* Mobile Bottom Navigation */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 safe-bottom bg-white border-t border-line flex pb-safe">
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
           const active = pathname === href;
           return (
             <Link
               key={href}
               href={href}
-              className="flex-1 flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium"
+              className="flex-1 flex flex-col items-center justify-center gap-1 py-3 text-[11px] font-semibold transition-colors"
             >
-              <Icon size={20} strokeWidth={active ? 2.4 : 1.8} className={active ? "text-primary" : "text-muted"} />
-              <span className={active ? "text-primary" : "text-muted"}>{label}</span>
+              <Icon 
+                size={20} 
+                strokeWidth={2} 
+                className={active ? "text-primary" : "text-muted"} 
+              />
+              <span className={active ? "text-primary-dark" : "text-muted"}>
+                {label}
+              </span>
             </Link>
           );
         })}

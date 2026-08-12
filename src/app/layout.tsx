@@ -1,18 +1,24 @@
 import type { Metadata } from "next";
-import { Inter, Poppins } from "next/font/google";
+import { Plus_Jakarta_Sans, Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import Navbar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
 import "./globals.css";
 
-const inter = Inter({
+const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-plus-jakarta",
   display: "swap",
 });
 
-const poppins = Poppins({
-  weight: ["500", "600", "700"],
+const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
-  variable: "--font-poppins",
+  variable: "--font-space-grotesk",
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
   display: "swap",
 });
 
@@ -27,12 +33,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${poppins.variable}`}>
-      <body className="min-h-screen bg-[#FAFAFA] text-ink antialiased flex flex-col pt-14 pb-16 md:pb-0">
+    <html 
+      lang="en" 
+      className={`${plusJakartaSans.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable}`}
+    >
+      <body className="min-h-screen bg-[#FAFAFA] text-ink antialiased flex flex-col pt-14 pb-16 md:pb-0 font-sans">
         <Navbar />
         <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 lg:p-8">
           {children}
         </main>
+
+        <Footer />
       </body>
     </html>
   );
