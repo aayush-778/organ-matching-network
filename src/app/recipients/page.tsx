@@ -10,13 +10,19 @@ import type { Recipient } from "@/types/dashboard";
 
 export default function RecipientsPage() {
   const [recipients, setRecipients] = useState<Recipient[]>([]);
+  // 1. Added state to hold the history logs
+  const [historyLogs, setHistoryLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
 
   async function refresh() {
     setLoading(true);
     const res = await listRecipients();
-    if (res.status === "success") setRecipients(res.recipients);
+    if (res.status === "success") {
+      setRecipients(res.recipients || []);
+      // 2. Extract the history logs from the API response
+      setHistoryLogs(res.historyLogs || []);
+    }
     setLoading(false);
   }
 
@@ -63,7 +69,11 @@ export default function RecipientsPage() {
         </Button>
       </div>
 
-      <PatientTable recipients={recipients} loading={loading} />
+      <PatientTable 
+        recipients={recipients} 
+        historyLogs={historyLogs} 
+        loading={loading} 
+      />
 
       <AddPatientModal open={modalOpen} onClose={() => setModalOpen(false)} onSubmit={handleAdd} />
     </div>

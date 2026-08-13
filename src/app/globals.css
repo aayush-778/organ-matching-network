@@ -59,3 +59,9 @@ h1, h2, h3, h4, h5, h6 {
   outline: 2px solid #0C6E63;
   outline-offset: 2px;
 }
+
+.field-quiet:focus-visible {
+  outline: none !important;
+  outline-offset: 0 !important;
+  box-shadow: inset 0 0 0 1px rgb(12 110 99 / 0.25);
+}

@@ -10,6 +10,7 @@ import type {
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
+    cache: "no-store", // <-- Forces the browser/Next.js to always fetch fresh data
     ...init,
     headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
   });

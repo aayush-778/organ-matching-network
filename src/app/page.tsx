@@ -201,17 +201,27 @@ export default function CommandCenterPage() {
 
   return (
     <div className="space-y-6 font-sans">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-ink font-heading">
-            Allocation Command
-          </h1>
-          <p className="text-sm text-muted font-sans mt-0.5">
-            Manage live organ donor matches and candidate decision queues.
-          </p>
+      <div className="flex items-center justify-center gap-2.5 py-2">
+        <span className="text-base italic font-medium text-primary-dark">
+          "To be an organ donor means to leave behind a legacy of life, love, and hope."
+        </span>
+      </div>
+
+      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+        <div className="space-y-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-ink font-heading">
+              Allocation Command
+            </h1>
+            <p className="text-sm text-muted font-sans mt-0.5">
+              Manage live organ donor matches and candidate decision queues.
+            </p>
+          </div>
+          
         </div>
+
         {activeSessionId && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 mt-2 md:mt-0">
             <span className="text-xs font-mono text-muted bg-surface border border-line px-2.5 py-1 rounded-md">
               Session: {activeSessionId.slice(0, 8)}...
             </span>
@@ -236,8 +246,9 @@ export default function CommandCenterPage() {
         </div>
       )}
 
+      {/* Adjusted grid layout to give the form more width (lg:col-span-6 instead of 5) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        <div className="lg:col-span-5 space-y-6">
+        <div className="lg:col-span-6 space-y-6">
           <IntakeForm
             onSubmit={handleDonorSubmit}
             submitting={submittingIntake || matchData?.session_status === "active"}
@@ -249,7 +260,6 @@ export default function CommandCenterPage() {
                 Match Overview
               </h3>
               <div className="grid grid-cols-2 gap-3 text-xs">
-                
                 <div className="bg-surface p-3 rounded-xl border border-line/60 flex flex-col justify-center">
                   <span className="text-muted font-medium text-[10px] uppercase tracking-wider mb-1.5 font-mono">
                     Status
@@ -299,13 +309,13 @@ export default function CommandCenterPage() {
                     {matchData.datasource}
                   </span>
                 </div>
-
               </div>
             </div>
           )}
         </div>
 
-        <div className="lg:col-span-7 space-y-6">
+        {/* Adjusted the remaining area to lg:col-span-6 */}
+        <div className="lg:col-span-6 space-y-6">
           {matchData?.current_offer && matchData.session_status === "active" ? (
             <ActiveOfferCard
               offer={matchData.current_offer}

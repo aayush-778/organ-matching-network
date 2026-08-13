@@ -98,6 +98,7 @@ export interface Recipient {
 export interface RecipientsResponse {
   status: "success" | "error";
   recipients: Recipient[];
+  historyLogs?: OfferHistoryItem[];
   datasource?: "mongodb";
   message?: string;
 }

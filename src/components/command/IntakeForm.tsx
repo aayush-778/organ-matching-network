@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import type { IntakeFormValues } from "@/types/dashboard";
+import { RotateCcw } from "lucide-react";
 
 const ORGAN_OPTIONS = ["Heart", "Liver", "Kidney", "Lung", "Pancreas", "Cornea"];
 const BLOOD_OPTIONS = ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"];
@@ -25,21 +26,35 @@ const REGIONAL_HOSPITALS = [
   { id: 99, name: "Hospital 99 (South Hub)" },
 ];
 
+const DEFAULTS = {
+  organ: "Heart" as IntakeFormValues["organ"],
+  donorBloodType: "A+",
+  donorHospitalId: REGIONAL_HOSPITALS[0].id,
+  ischemiaLimitMins: ORGAN_DEFAULTS["Heart"],
+  selectedHla: [] as number[],
+  maxMismatches: 4,
+};
+
+// Shared input/select styling — no border, no default browser ring.
+// `field-quiet` (see globals.css) swaps the global focus-visible outline
+// for a soft inset highlight scoped to just these fields.
+const FIELD_CLASS =
+  "field-quiet w-full p-3 bg-surface hover:bg-surface/70 focus:bg-white border-none outline-none " +
+  "ring-0 focus:ring-0 " +
+  "rounded-lg text-sm font-medium text-ink transition-colors duration-150 cursor-pointer";
+
 interface IntakeFormProps {
   onSubmit: (values: IntakeFormValues) => Promise<void>;
   submitting?: boolean;
 }
 
 export default function IntakeForm({ onSubmit, submitting = false }: IntakeFormProps) {
-  const [organ, setOrgan] = useState<IntakeFormValues["organ"]>("Heart");
-  const [donorBloodType, setDonorBloodType] = useState("A+");
-  const [donorHospitalId, setDonorHospitalId] = useState<number>(REGIONAL_HOSPITALS[0].id);
-  
-  // FIX: Allow the state to temporarily hold an empty string when the user backspaces
-  const [ischemiaLimitMins, setIschemiaLimitMins] = useState<number | "">(ORGAN_DEFAULTS["Heart"]);
-  
-  const [selectedHla, setSelectedHla] = useState<number[]>([]);
-  const [maxMismatches, setMaxMismatches] = useState<number>(4);
+  const [organ, setOrgan] = useState<IntakeFormValues["organ"]>(DEFAULTS.organ);
+  const [donorBloodType, setDonorBloodType] = useState(DEFAULTS.donorBloodType);
+  const [donorHospitalId, setDonorHospitalId] = useState<number>(DEFAULTS.donorHospitalId);
+  const [ischemiaLimitMins, setIschemiaLimitMins] = useState<number | "">(DEFAULTS.ischemiaLimitMins);
+  const [selectedHla, setSelectedHla] = useState<number[]>(DEFAULTS.selectedHla);
+  const [maxMismatches, setMaxMismatches] = useState<number>(DEFAULTS.maxMismatches);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const toggleHla = (idx: number) => {
@@ -54,11 +69,20 @@ export default function IntakeForm({ onSubmit, submitting = false }: IntakeFormP
     setIschemiaLimitMins(ORGAN_DEFAULTS[selectedOrgan] || 240);
   };
 
+  const handleReset = () => {
+    setOrgan(DEFAULTS.organ);
+    setDonorBloodType(DEFAULTS.donorBloodType);
+    setDonorHospitalId(DEFAULTS.donorHospitalId);
+    setIschemiaLimitMins(DEFAULTS.ischemiaLimitMins);
+    setSelectedHla(DEFAULTS.selectedHla);
+    setMaxMismatches(DEFAULTS.maxMismatches);
+    setErrorMsg(null);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
 
-    // FIX: Catch empty strings before submission
     if (ischemiaLimitMins === "" || ischemiaLimitMins < 0 || maxMismatches < 0) {
       setErrorMsg("Numeric values must be valid and cannot be negative.");
       return;
@@ -81,17 +105,28 @@ export default function IntakeForm({ onSubmit, submitting = false }: IntakeFormP
   };
 
   return (
-    <form 
-      onSubmit={handleSubmit} 
+    <form
+      onSubmit={handleSubmit}
       className="w-full bg-white border border-line rounded-xl shadow-sm p-6 md:p-8 space-y-7"
     >
-      <div className="space-y-1.5 border-b border-line pb-5">
-        <h2 className="text-xl font-bold text-ink font-heading tracking-tight">
-          Donor Intake Procurement
-        </h2>
-        <p className="text-sm text-muted font-sans leading-relaxed">
-          Register a new donor organ to initialize the clinical triage and routing algorithms.
-        </p>
+      <div className="flex items-start justify-between gap-4 border-b border-line pb-5">
+        <div className="space-y-1.5">
+          <h2 className="text-xl font-bold text-ink font-heading tracking-tight">
+            Donor Intake Procurement
+          </h2>
+          <p className="text-sm text-muted font-sans leading-relaxed">
+            Register a new donor organ to initialize the clinical triage and routing algorithms.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleReset}
+          disabled={submitting}
+          className="field-quiet flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-ink bg-surface hover:bg-surface/70 border-none outline-none rounded-lg px-3 py-2 shrink-0 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <RotateCcw size={13} strokeWidth={2} />
+          Reset
+        </button>
       </div>
 
       {errorMsg && (
@@ -106,11 +141,7 @@ export default function IntakeForm({ onSubmit, submitting = false }: IntakeFormP
           <label className="block text-[11px] font-bold text-muted uppercase tracking-wider font-sans">
             Organ Type
           </label>
-          <select
-            value={organ}
-            onChange={handleOrganChange}
-            className="w-full p-2.5 bg-surface border border-line rounded-lg text-sm font-medium text-ink focus:outline-none focus-visible:outline-none focus:ring-0 cursor-pointer"
-          >
+          <select value={organ} onChange={handleOrganChange} className={FIELD_CLASS}>
             {ORGAN_OPTIONS.map((o) => (
               <option key={o} value={o}>{o}</option>
             ))}
@@ -125,7 +156,7 @@ export default function IntakeForm({ onSubmit, submitting = false }: IntakeFormP
           <select
             value={donorBloodType}
             onChange={(e) => setDonorBloodType(e.target.value)}
-            className="w-full p-2.5 bg-surface border border-line rounded-lg text-sm font-medium text-ink focus:outline-none focus-visible:outline-none focus:ring-0 cursor-pointer"
+            className={FIELD_CLASS}
           >
             {BLOOD_OPTIONS.map((b) => (
               <option key={b} value={b}>{b}</option>
@@ -133,15 +164,15 @@ export default function IntakeForm({ onSubmit, submitting = false }: IntakeFormP
           </select>
         </div>
 
-        {/* Hospital ID Dropdown */}
-        <div className="space-y-2">
+        {/* Hospital ID Dropdown — full width row so long names don't feel squeezed */}
+        <div className="space-y-2 sm:col-span-2">
           <label className="block text-[11px] font-bold text-muted uppercase tracking-wider font-sans">
             Procurement Location
           </label>
           <select
             value={donorHospitalId}
             onChange={(e) => setDonorHospitalId(Number(e.target.value))}
-            className="w-full p-2.5 bg-surface border border-line rounded-lg text-sm font-medium text-ink focus:outline-none focus-visible:outline-none focus:ring-0 cursor-pointer"
+            className={FIELD_CLASS}
           >
             {REGIONAL_HOSPITALS.map((h) => (
               <option key={h.id} value={h.id}>{h.name}</option>
@@ -150,7 +181,7 @@ export default function IntakeForm({ onSubmit, submitting = false }: IntakeFormP
         </div>
 
         {/* Ischemia Limit */}
-        <div className="space-y-2">
+        <div className="space-y-2 sm:col-span-2">
           <label className="block text-[11px] font-bold text-muted uppercase tracking-wider font-sans flex justify-between">
             <span>Ischemia Limit</span>
             <span className="text-muted/70 normal-case font-medium">(minutes)</span>
@@ -161,11 +192,11 @@ export default function IntakeForm({ onSubmit, submitting = false }: IntakeFormP
             step="15"
             value={ischemiaLimitMins}
             onChange={(e) => {
-              // FIX: Only convert to a number if the user has actually typed something
               const val = e.target.value;
               setIschemiaLimitMins(val === "" ? "" : Number(val));
             }}
-            className="w-full p-2.5 bg-surface border border-line rounded-lg text-sm font-mono font-medium text-ink focus:outline-none focus-visible:outline-none focus:ring-0"
+            onWheel={(e) => e.currentTarget.blur()}
+            className={`${FIELD_CLASS} font-mono cursor-text [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
             required
           />
         </div>
@@ -184,10 +215,10 @@ export default function IntakeForm({ onSubmit, submitting = false }: IntakeFormP
                 type="button"
                 key={label}
                 onClick={() => toggleHla(idx)}
-                className={`py-2 px-2 text-[11px] sm:text-xs font-mono font-medium rounded-lg border transition-colors whitespace-nowrap focus:outline-none focus-visible:outline-none ${
+                className={`field-quiet py-2 px-2 text-[11px] sm:text-xs font-mono font-medium rounded-lg transition-colors whitespace-nowrap outline-none ${
                   isSelected
-                    ? "bg-primary text-white border-primary"
-                    : "bg-surface text-muted border-line hover:border-muted/30 hover:text-ink"
+                    ? "bg-primary text-white"
+                    : "bg-surface text-muted hover:text-ink hover:bg-surface/80"
                 }`}
               >
                 {label}
@@ -206,12 +237,12 @@ export default function IntakeForm({ onSubmit, submitting = false }: IntakeFormP
           <input
             type="range"
             min="0"
-            max="6" 
+            max="6"
             value={maxMismatches}
             onChange={(e) => setMaxMismatches(Number(e.target.value))}
-            className="w-full h-1.5 bg-line rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none focus-visible:outline-none"
+            className="field-quiet w-full h-1.5 bg-line rounded-lg appearance-none cursor-pointer accent-primary outline-none"
           />
-          <span className="font-mono text-ink font-semibold w-8 text-center bg-surface border border-line rounded-lg py-1.5">
+          <span className="font-mono text-ink font-semibold w-8 text-center bg-surface rounded-lg py-1.5">
             {maxMismatches}
           </span>
         </div>
@@ -225,7 +256,7 @@ export default function IntakeForm({ onSubmit, submitting = false }: IntakeFormP
         <button
           type="submit"
           disabled={submitting}
-          className="w-full py-3.5 px-4 bg-primary hover:bg-primary-dark text-white font-semibold font-heading rounded-lg disabled:opacity-50 transition-colors flex items-center justify-center gap-2 focus:outline-none focus-visible:outline-none"
+          className="field-quiet w-full py-3.5 px-4 bg-primary hover:bg-primary-dark text-white font-semibold font-heading rounded-lg disabled:opacity-50 transition-colors flex items-center justify-center gap-2 outline-none"
         >
           {submitting ? (
             <>

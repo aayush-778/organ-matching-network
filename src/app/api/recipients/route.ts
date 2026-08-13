@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import { Recipient } from "@/models/Recipient";
+import { OfferSessionModel } from "@/models/OfferSession"; // <-- Make sure this is imported
 import { bloodTypeToMask, hlaArrayToMask } from "@/lib/bitmask";
 
 export async function GET(req: NextRequest) {
@@ -18,7 +19,19 @@ export async function GET(req: NextRequest) {
 
     const filter = organ ? { organNeeded: { $regex: new RegExp(`^${organ}$`, "i") } } : {};
     const recipients = await Recipient.find(filter).sort({ urgency: -1 }).lean();
-    return NextResponse.json({ status: "success", recipients, datasource: "mongodb" });
+
+    const sessions = await OfferSessionModel.find({}, { history: 1 }).lean();
+
+    const globalHistory = sessions
+      .flatMap((session) => session.history || [])
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+    return NextResponse.json({ 
+      status: "success", 
+      recipients, 
+      historyLogs: globalHistory,
+      datasource: "mongodb" 
+    });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to fetch recipient records";
     return NextResponse.json({ status: "error", message }, { status: 500 });
