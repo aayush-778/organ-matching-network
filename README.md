@@ -1,5 +1,7 @@
 # OrganMatch Network
 
+**Live Demo:** [https://organ-matching-network.onrender.com/](https://organ-matching-network.onrender.com/)
+
 OrganMatch Network is a full-stack organ allocation simulation that combines a Next.js dashboard, MongoDB persistence, and a native C++ ranking engine. The project is designed to show how a real matching pipeline can be broken into small, auditable stages: biochemical compatibility, transit logistics, queue ranking, offer management, and analytics.
 
 The application has two runtime layers:
@@ -220,31 +222,24 @@ g++ -std=c++17 -Iinclude tests/test_structures.cpp src/*.cpp -o tests/run_tests
 
 ## Deployment Notes
 
-### Docker
+This application is containerized using Docker and deployed on Render. 
 
-Docker is the most predictable deployment target because it can build the native engine and run the Node app in one image.
+Because the project relies on a native C++ ranking engine, standard Node-based serverless environments (like Vercel) often struggle to preserve and execute the compiled binary correctly. Docker solves this by providing a unified environment where both the Node app and the native binary can reliably coexist.
 
-Important points:
+### Docker Setup
 
-- install a C++17 compiler in the image,
-- run `npm install` and `npm run build:engine` during the image build,
-- pass `MONGODB_URI` at runtime,
-- expose the Next.js port used by `next start`.
+The `Dockerfile` handles the complete full-stack build process:
+- Installs a C++17 compiler in the image.
+- Runs `npm install` and `npm run build:engine` during the build phase to compile the `cpp-engine/engine` binary.
+- Builds the Next.js web application.
+- Exposes the Next.js port and starts the server with the native binary available on disk.
 
-A typical container flow is: build dependencies, compile `cpp-engine/engine`, build the Next.js app, then start the server with the same binary available on disk.
+### Running in Production (Render)
 
-### Vercel
+When deploying to Render via Docker:
+- Ensure the build path points to the provided Dockerfile.
+- You must set the `MONGODB_URI` environment variable in your Render dashboard so the application can persist data and session states.
 
-Vercel can work, but the native binary is the critical constraint.
-
-For a successful deployment:
-
-- keep the app on the Node.js runtime, not the Edge runtime,
-- make sure the deployment build step compiles `cpp-engine/engine` for Linux,
-- ensure the generated binary is present in the final serverless output,
-- set `MONGODB_URI` in the Vercel environment variables.
-
-This repo already helps by wiring `npm run build:engine` into `prebuild` and `predev`, so the native binary is part of the normal build path. If your Vercel build environment does not preserve the binary correctly, Docker or another Node hosting target will be more reliable.
 
 ## Project Notes
 
